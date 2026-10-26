@@ -1,5 +1,0 @@
-kurigram
-tgcrypto
-aiohttp
-xhtml2pdf
-matplotlib
