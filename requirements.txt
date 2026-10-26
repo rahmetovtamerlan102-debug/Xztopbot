@@ -1,4 +1,0 @@
-kurigram
-tgcrypto
-aiohttp
-fpdf2
