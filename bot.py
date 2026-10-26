@@ -68,7 +68,7 @@ TON_API_KEY = os.environ.get("TON_API_KEY", "")
 
 # --- НАСТРОЙКИ ТУННЕЛЯ (ОБЯЗАТЕЛЬНО ПОМЕНЯЙТЕ) ---
 TUNNEL_URL = "https://dallas-regulations-pasta-las.trycloudflare.com" # Ссылка из cloudflared
-SECRET_TOKEN = "ВАШ_ПАРОЛЬ" # Пароль, который вы вписали в api_server.py
+SECRET_TOKEN = "test123" # Пароль, который вы вписали в api_server.py
 
 # ==========================================
 # 2. БАЗА ID И ФУНКЦИИ ДЛЯ TELEGRAM
