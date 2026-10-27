@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OSINT Поиск</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        :root { 
+            --bg-color: #f4f4f5; --input-bg: #e8e8e8; --btn-bg: #1a1a1a; 
+            --text-color: #000000; --text-muted: #8e8e93; --accent: #007aff; --star-color: #f5a623;
+        }
+        html, body { 
+            margin: 0; padding: 12px; background-color: var(--bg-color); 
+            font-family: -apple-system, sans-serif; min-height: 100vh; 
+            overflow-x: hidden;
+        }
+        .container { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 500px; margin: 0 auto; }
+        
+        input { width: 100%; padding: 18px 16px; font-size: 16px; background-color: var(--input-bg); border: none; border-radius: 16px; outline: none; }
+        button { width: 100%; padding: 18px; font-size: 17px; font-weight: 500; color: white; background-color: var(--btn-bg); border: none; border-radius: 16px; cursor: pointer; }
+        
+        #result-screen { display: none; width: 100%; max-width: 500px; margin: 0 auto; }
+        .back-btn { background: none; color: var(--accent); padding: 0; font-size: 16px; margin-bottom: 12px; width: auto; border: none; cursor: pointer; }
+        
+        .card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 12px; overflow: hidden; }
+        .result-title { font-size: 16px; font-weight: bold; margin-bottom: 4px; word-break: break-all; line-height: 1.3; }
+        .result-type { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
+        
+        .result-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; gap: 12px; }
+        .result-row:last-child { border-bottom: none; }
+        .result-label { color: var(--text-muted); flex-shrink: 0; max-width: 40%; }
+        .result-value { font-weight: 500; text-align: right; word-break: break-word; overflow-wrap: anywhere; min-width: 0; }
+        
+        .section-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: bold; margin-bottom: 10px; margin-top: 4px; color: #1a4fa0; }
+        .section-icon { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; }
+
+        .tx-item { padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+        .tx-item:last-child { border-bottom: none; }
+        .tx-row-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 500; margin-bottom: 4px; min-width: 0; }
+        .tx-addr { font-family: monospace; background: #f0f0f5; padding: 3px 6px; border-radius: 4px; color: #333; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex-shrink: 1; }
+        .tx-amount { flex-shrink: 0; white-space: nowrap; padding: 3px 6px; border-radius: 4px; font-size: 12px; }
+        .tx-amount.in { color: #4dcd5e; background: #e8f8eb; }
+        .tx-amount.out { color: #e85d5d; background: #fdeaea; }
+        .tx-row-bottom { display: flex; justify-content: space-between; gap: 8px; color: var(--text-muted); font-size: 11px; margin-top: 4px; min-width: 0; }
+        .tx-row-bottom > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+        .profile-box { background: #f8f9fa; border-radius: 8px; padding: 12px; }
+        .profile-desc { font-size: 12px; color: #555; margin-bottom: 8px; line-height: 1.5; overflow-wrap: anywhere; }
+        
+        .nft-collections { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .nft-badge { background: #e0e0e0; padding: 4px 10px; border-radius: 10px; font-size: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        
+        .gift-item { display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 8px 10px; border-radius: 8px; margin-bottom: 4px; font-size: 13px; border: 1px solid #eee; gap: 8px; }
+        .gift-item > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .gift-item > span:last-child { flex-shrink: 0; }
+        .svg-star { display: inline-block; vertical-align: middle; width: 13px; height: 13px; fill: var(--star-color); }
+        
+        .graph-container { text-align: center; }
+        .graph-container img { max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 12px; border: 1px solid #eee; }
+
+        @media (max-width: 360px) {
+            body { padding: 8px; }
+            .card { padding: 12px; border-radius: 12px; }
+            .result-title { font-size: 14px; }
+            .result-row { font-size: 12px; }
+            input { padding: 16px 14px; font-size: 15px; }
+            button { padding: 16px; font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="search-screen">
+        <input type="text" id="query-input" placeholder="TON-адрес, @username, +номер..." autocomplete="off">
+        <button id="search-btn" onclick="performSearch()">Искать</button>
+        <div style="text-align: center; font-size: 13px; color: var(--text-muted);">Все запросы абсолютно бесплатны</div>
+    </div>
+
+    <div id="result-screen">
+        <button class="back-btn" onclick="goBack()">‹ Назад</button>
+        <div class="card">
+            <div class="result-title" id="res-title"></div>
+            <div class="result-type" id="res-type"></div>
+            <div id="main-data"></div>
+        </div>
+        <div id="extra-data"></div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp; tg.expand(); tg.setHeaderColor('#f4f4f5');
+        const input = document.getElementById('query-input');
+
+        const svgSenders = `<svg class="section-icon" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>`;
+        const svgReceivers = `<svg class="section-icon" viewBox="0 0 24 24"><path d="M5 15h4v6h6v-6h4l-7-7-7 7zM5 4v2h14V4H5z"/></svg>`;
+        const svgNft = `<svg class="section-icon" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>`;
+        const svgProfile = `<svg class="section-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+        const svgGraph = `<svg class="section-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`;
+
+        async function performSearch() {
+            const query = input.value.trim(); if (!query) return tg.showAlert('Введите запрос');
+            const btn = document.getElementById('search-btn'); 
+            btn.disabled = true; btn.textContent = 'Загрузка...';
+            try {
+                const response = await fetch('/api/search', { 
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ query }) 
+                });
+                const data = await response.json();
+                if (data.error) { tg.showAlert(data.error); } else { showResult(query, data); }
+            } catch (e) { tg.showAlert('Ошибка соединения'); } finally {
+                btn.disabled = false; btn.textContent = 'Искать';
+            }
+        }
+
+        function shortenAddr(addr) {
+            if (!addr || addr === '?') return '?';
+            return addr.length > 15 ? addr.substring(0, 6) + '...' + addr.substring(addr.length - 4) : addr;
+        }
+
+        const starSvg = `<svg class="svg-star" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+
+        function showResult(query, data) {
+            document.getElementById('search-screen').style.display = 'none'; 
+            document.getElementById('result-screen').style.display = 'block';
+            document.getElementById('res-title').textContent = query; 
+            document.getElementById('res-type').textContent = data.type || 'Результат';
+            
+            let mainHtml = '';
+            for (const [key, value] of Object.entries(data.result)) {
+                if (key === 'Подарки' && Array.isArray(value)) {
+                    mainHtml += `<div class="result-row" style="flex-direction: column; align-items: stretch;">
+                        <span class="result-label" style="max-width: 100%; margin-bottom: 8px;">Подарки:</span>
+                        <div style="width:100%">`;
+                    value.forEach(g => {
+                        mainHtml += `<div class="gift-item">
+                            <span>От: ${g.sender}</span>
+                            <span style="flex-shrink:0;">${g.stars} ${starSvg}</span>
+                        </div>`;
+                    });
+                    mainHtml += `</div></div>`;
+                } else {
+                    let valStr = String(value).replace(/⭐/g, starSvg);
+                    mainHtml += `<div class="result-row">
+                        <span class="result-label">${key}</span>
+                        <span class="result-value">${valStr}</span>
+                    </div>`;
+                }
+            }
+            document.getElementById('main-data').innerHTML = mainHtml;
+
+            let extraHtml = '';
+            
+            if (data.senders && data.senders.length > 0) {
+                extraHtml += `<div class="card"><div class="section-title">${svgSenders} Отправители</div>`;
+                data.senders.forEach(tx => {
+                    extraHtml += `<div class="tx-item">
+                        <div class="tx-row-top">
+                            <span class="tx-addr">${shortenAddr(tx.addr)}</span>
+                            <span class="tx-amount in">+${tx.amount} TON</span>
+                        </div>
+                        <div class="tx-row-bottom">
+                            <span>${tx.label !== '—' ? tx.label : '&nbsp;'}</span>
+                            <span>${tx.date}</span>
+                        </div>
+                    </div>`;
+                });
+                extraHtml += `</div>`;
+            }
+
+            if (data.receivers && data.receivers.length > 0) {
+                extraHtml += `<div class="card"><div class="section-title">${svgReceivers} Получатели</div>`;
+                data.receivers.forEach(tx => {
+                    extraHtml += `<div class="tx-item">
+                        <div class="tx-row-top">
+                            <span class="tx-addr">${shortenAddr(tx.addr)}</span>
+                            <span class="tx-amount out">-${tx.amount} TON</span>
+                        </div>
+                        <div class="tx-row-bottom">
+                            <span>${tx.label !== '—' ? tx.label : '&nbsp;'}</span>
+                            <span>${tx.date}</span>
+                        </div>
+                    </div>`;
+                });
+                extraHtml += `</div>`;
+            }
+
+            if (data.nft) {
+                extraHtml += `<div class="card"><div class="section-title">${svgNft} NFT-операции</div>
+                    <div class="result-row"><span class="result-label">Получено</span><span class="result-value">${data.nft.recv}</span></div>
+                    <div class="result-row"><span class="result-label">Выпущено</span><span class="result-value">${data.nft.mint}</span></div>
+                    <div class="result-row"><span class="result-label">Отправлено</span><span class="result-value">${data.nft.sent}</span></div>
+                    <div class="result-row"><span class="result-label">Спам</span><span class="result-value" style="color:#e85d5d;">${data.nft.spam}</span></div>`;
+                if (Object.keys(data.nft.collections).length > 0) {
+                    extraHtml += `<div class="nft-collections">`;
+                    for (const [name, count] of Object.entries(data.nft.collections)) {
+                        extraHtml += `<span class="nft-badge">${name} (${count})</span>`;
+                    }
+                    extraHtml += `</div>`;
+                }
+                extraHtml += `</div>`;
+            }
+
+            if (data.profile) {
+                extraHtml += `<div class="card"><div class="section-title">${svgProfile} Профиль владельца</div>
+                    <div class="profile-box">
+                        <div class="profile-desc">${data.profile.desc}</div>
+                        <div class="result-row"><span class="result-label">Тип</span><span class="result-value">${data.profile.type} (${data.profile.conf})</span></div>
+                        <div class="result-row"><span class="result-label">Операций</span><span class="result-value">${data.profile.ops}</span></div>
+                        <div class="result-row"><span class="result-label">Контрагентов</span><span class="result-value">${data.profile.peers}</span></div>
+                        <div class="result-row"><span class="result-label">Типичная сумма</span><span class="result-value">${data.profile.typical}</span></div>
+                        <div class="result-row"><span class="result-label">Держит средства</span><span class="result-value">${data.profile.hold}</span></div>
+                    </div>
+                </div>`;
+            }
+
+            if (data.graph) {
+                extraHtml += `<div class="card"><div class="section-title">${svgGraph} Граф связей</div>
+                    <div class="graph-container"><img src="data:image/png;base64,${data.graph}" alt="Граф связей"></div>
+                </div>`;
+            }
+
+            document.getElementById('extra-data').innerHTML = extraHtml;
+        }
+
+        function goBack() { 
+            document.getElementById('result-screen').style.display = 'none'; 
+            document.getElementById('search-screen').style.display = 'flex'; 
+        }
+    </script>
+</body>
+</html>
