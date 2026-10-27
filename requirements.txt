@@ -1,7 +1,0 @@
-kurigram
-TgCrypto-pyrofork
-aiohttp
-tonsdk
-matplotlib
-networkx
-xhtml2pdf
