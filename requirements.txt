@@ -1,0 +1,9 @@
+kurigram
+tgcrypto
+fastapi
+uvicorn[standard]
+pydantic
+aiohttp
+networkx
+matplotlib
+phonenumbers
