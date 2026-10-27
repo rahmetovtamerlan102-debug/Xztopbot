@@ -1,9 +1,0 @@
-kurigram
-fastapi
-uvicorn
-pydantic
-aiohttp
-phonenumbers
-tonsdk
-networkx
-matplotlib
