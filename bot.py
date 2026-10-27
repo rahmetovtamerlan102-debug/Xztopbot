@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ReconVault</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root { 
+            --bg-color: #f4f4f5; --card-bg: #ffffff; --btn-bg: #1a1a1a; 
+            --text-color: #000000; --text-muted: #8e8e93; --accent: #007aff; 
+            --gray-bg: #e8e8e8; --star-color: #f5a623;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        /* ЗАПРЕТ НА ВЫДЕЛЕНИЕ ТЕКСТА И КОПИРОВАНИЕ */
+        body { 
+            margin: 0; padding: 16px; padding-bottom: 90px; 
+            background-color: var(--bg-color); 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            min-height: 100vh; display: flex; flex-direction: column;
+            -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+            -webkit-touch-callout: none;
+        }
+        
+        /* Экраны с плавной анимацией */
+        .screen { 
+            display: none; flex-direction: column; gap: 16px; 
+            width: 100%; max-width: 500px; margin: 0 auto; 
+            opacity: 0; transform: translateY(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .screen.active { 
+            display: flex; 
+            opacity: 1; transform: translateY(0);
+        }
+
+        /* Поиск */
+        input { width: 100%; padding: 18px 16px; font-size: 16px; background-color: var(--gray-bg); border: none; border-radius: 16px; outline: none; }
+        .btn-primary { width: 100%; padding: 18px; font-size: 17px; font-weight: 600; color: white; background-color: var(--btn-bg); border: none; border-radius: 16px; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+
+        /* О боте */
+        .about-header { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+        .feature-card { background: var(--card-bg); border-radius: 16px; padding: 16px; display: flex; align-items: flex-start; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .feature-icon { width: 40px; height: 40px; background: var(--gray-bg); border-radius: 12px; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
+        .feature-icon svg { width: 20px; height: 20px; fill: var(--text-color); }
+        .feature-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+        .feature-desc { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+
+        /* НОВЫЙ ПРОФИЛЬ (Стильная карточка) */
+        .profile-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .profile-title { font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        
+        /* Градиентная карточка юзера */
+        .user-card-new { 
+            background: linear-gradient(135deg, #1a1a1a, #333333); 
+            border-radius: 24px; padding: 24px 20px; color: white; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            display: flex; flex-direction: column; gap: 16px;
+        }
+        .user-top { display: flex; align-items: center; gap: 16px; }
+        .avatar-new { 
+            width: 64px; height: 64px; border-radius: 50%; 
+            background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2);
+            display: flex; justify-content: center; align-items: center; 
+            color: white; font-size: 28px; font-weight: bold; 
+        }
+        .user-info-new { display: flex; flex-direction: column; gap: 4px; }
+        .user-name-new { font-size: 20px; font-weight: 700; }
+        .user-tag-new { font-size: 14px; color: rgba(255,255,255,0.6); }
+        
+        /* Мини-статистика в профиле */
+        .user-stats-new { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+        .u-stat { background: rgba(255,255,255,0.1); padding: 12px; border-radius: 16px; display: flex; flex-direction: column; gap: 4px; }
+        .u-stat-label { font-size: 11px; color: rgba(255,255,255,0.6); text-transform: uppercase; }
+        .u-stat-value { font-size: 16px; font-weight: 600; }
+
+        /* Кнопки в профиле */
+        .profile-buttons { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+        .p-btn { background: var(--card-bg); border-radius: 16px; padding: 16px; display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .p-btn svg { width: 20px; height: 20px; fill: var(--text-muted); }
+
+        /* Купить */
+        .buy-card { background: var(--card-bg); border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .buy-icon { width: 64px; height: 64px; background: #ffe8a1; color: #d49a00; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 28px; margin: 0 auto 16px auto; }
+
+        /* НИЖНЯЯ НАВИГАЦИЯ */
+        .bottom-nav { 
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            background: #ffffff; display: flex; justify-content: space-around; 
+            padding: 8px 0 24px 0; border-top: 1px solid #eaeaea; z-index: 100; 
+        }
+        .nav-item { 
+            display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; gap: 4px; font-size: 11px; 
+            color: #555; cursor: pointer; width: 25%;
+        }
+        .nav-icon-wrapper {
+            padding: 6px 20px; border-radius: 20px;
+            display: flex; justify-content: center; align-items: center;
+            transition: background-color 0.2s;
+        }
+        .nav-item.active .nav-icon-wrapper { background-color: #e3e3e8; }
+        .nav-item.active { color: #000; font-weight: 600; }
+        .nav-icon { width: 22px; height: 22px; fill: currentColor; }
+
+        /* Результаты */
+        .card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 12px; overflow: hidden; }
+        .result-title { font-size: 16px; font-weight: bold; margin-bottom: 4px; word-break: break-all; }
+        .result-type { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
+        .result-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; gap: 12px; }
+        .result-label { color: var(--text-muted); flex-shrink: 0; max-width: 40%; }
+        .result-value { font-weight: 500; text-align: right; word-break: break-word; min-width: 0; }
+    </style>
+</head>
+<body>
+
+    <!-- ЭКРАН 1: О БОТЕ -->
+    <div class="screen active" id="about-screen">
+        <div class="about-header">О боте</div>
+        <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">ReconVault — OSINT-инструмент для поиска.</div>
+        
+        <div class="feature-card">
+            <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
+            <div>
+                <div class="feature-title">Поиск по Telegram</div>
+                <div class="feature-desc">Ищет по @username, номеру телефона или ID. Показывает имя, юзернейм и дату регистрации.</div>
+            </div>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg></div>
+            <div>
+                <div class="feature-title">Анализ TON-кошельков</div>
+                <div class="feature-desc">Показывает баланс, статус, историю транзакций и NFT.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ЭКРАН 2: ПОИСК -->
+    <div class="screen" id="search-screen">
+        <div class="about-header">Поиск</div>
+        <input type="text" id="query-input" placeholder="TON-адрес, @username, +номер..." autocomplete="off">
+        <button class="btn-primary" id="search-btn" onclick="performSearch()">Искать</button>
+        
+        <div id="result-screen" style="display: none; margin-top: 16px;">
+            <button style="background:none; border:none; color:var(--accent); padding:0; margin-bottom:12px; font-size:16px; cursor:pointer;" onclick="goBack()">‹ Назад</button>
+            <div class="card">
+                <div class="result-title" id="res-title"></div>
+                <div class="result-type" id="res-type"></div>
+                <div id="main-data"></div>
+            </div>
+            <div id="extra-data"></div>
+        </div>
+    </div>
+
+    <!-- ЭКРАН 3: КУПИТЬ -->
+    <div class="screen" id="buy-screen">
+        <div class="about-header">Магазин</div>
+        <div class="buy-card">
+            <div class="buy-icon">★</div>
+            <div style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">PRO подписка</div>
+            <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 24px;">Доступ к приватному софту, скрытым базам и гайдам по OSINT.</div>
+            <button class="btn-primary">Оформить за 299 ₽</button>
+        </div>
+    </div>
+
+    <!-- ЭКРАН 4: НОВЫЙ ПРОФИЛЬ -->
+    <div class="screen" id="profile-screen">
+        <div class="profile-header">
+            <div class="profile-title">Профиль</div>
+            <div style="background:#e0e0e0; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">RV</div>
+        </div>
+        
+        <!-- Стильная карточка -->
+        <div class="user-card-new">
+            <div class="user-top">
+                <div class="avatar-new" id="avatar-letter">U</div>
+                <div class="user-info-new">
+                    <div class="user-name-new" id="user-name">Загрузка...</div>
+                    <div class="user-tag-new" id="user-tag">@username</div>
+                </div>
+            </div>
+            
+            <div class="user-stats-new">
+                <div class="u-stat">
+                    <div class="u-stat-label">Ваш ID</div>
+                    <div class="u-stat-value" id="profile-id">...</div>
+                </div>
+                <div class="u-stat">
+                    <div class="u-stat-label">Статус</div>
+                    <div class="u-stat-value">Free</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Список кнопок -->
+        <div class="profile-buttons">
+            <div class="p-btn">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    История поиска
+                </div>
+                <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+            </div>
+            
+            <div class="p-btn">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/></svg>
+                    Поддержка
+                </div>
+                <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+            </div>
+            
+            <div class="p-btn">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    Язык / Language
+                </div>
+                <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+            </div>
+        </div>
+        <div style="height: 20px;"></div>
+    </div>
+
+    <!-- НИЖНЕЕ МЕНЮ -->
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="showScreen('about')">
+            <div class="nav-icon-wrapper">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
+            </div>
+            О боте
+        </div>
+        
+        <div class="nav-item" onclick="showScreen('search')">
+            <div class="nav-icon-wrapper">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            </div>
+            Поиск
+        </div>
+        
+        <div class="nav-item" onclick="showScreen('buy')">
+            <div class="nav-icon-wrapper">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            </div>
+            Купить
+        </div>
+        
+        <div class="nav-item" onclick="showScreen('profile')">
+            <div class="nav-icon-wrapper">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            </div>
+            Профиль
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp; 
+        tg.expand(); 
+        tg.setHeaderColor('#f4f4f5');
+        
+        // Данные пользователя в профиль
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const user = tg.initDataUnsafe.user;
+            const name = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+            document.getElementById('user-name').textContent = name;
+            document.getElementById('user-tag').textContent = user.username ? '@' + user.username : 'Без юзернейма';
+            document.getElementById('avatar-letter').textContent = user.first_name ? user.first_name[0].toUpperCase() : 'U';
+            document.getElementById('profile-id').textContent = user.id;
+        }
+
+        // Переключение экранов с анимацией
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            
+            setTimeout(() => {
+                if (id === 'about') {
+                    document.getElementById('about-screen').classList.add('active');
+                    document.querySelectorAll('.nav-item')[0].classList.add('active');
+                } else if (id === 'search') {
+                    document.getElementById('search-screen').classList.add('active');
+                    document.querySelectorAll('.nav-item')[1].classList.add('active');
+                } else if (id === 'buy') {
+                    document.getElementById('buy-screen').classList.add('active');
+                    document.querySelectorAll('.nav-item')[2].classList.add('active');
+                } else if (id === 'profile') {
+                    document.getElementById('profile-screen').classList.add('active');
+                    document.querySelectorAll('.nav-item')[3].classList.add('active');
+                }
+            }, 50); // Небольшая задержка для срабатывания анимации
+        }
+
+        // Поиск
+        async function performSearch() {
+            const query = document.getElementById('query-input').value.trim(); 
+            if (!query) return tg.showAlert('Введите запрос');
+            
+            const btn = document.getElementById('search-btn'); 
+            btn.disabled = true; btn.textContent = 'Загрузка...';
+            
+            try {
+                const response = await fetch('/api/search', { 
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ query }) 
+                });
+                const data = await response.json();
+                
+                if (data.error) { 
+                    tg.showAlert(data.error); 
+                } else { 
+                    showResult(query, data); 
+                }
+            } catch (e) { 
+                tg.showAlert('Ошибка соединения'); 
+            } finally {
+                btn.disabled = false; btn.textContent = 'Искать';
+            }
+        }
+
+        function showResult(query, data) {
+            document.getElementById('search-screen').querySelector('input').style.display = 'none';
+            document.getElementById('search-btn').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'block';
+            
+            document.getElementById('res-title').textContent = query; 
+            document.getElementById('res-type').textContent = data.type || 'Результат';
+            
+            let mainHtml = '';
+            for (const [key, value] of Object.entries(data.result)) {
+                if (key === 'Подарки' && Array.isArray(value)) {
+                    mainHtml += `<div class="result-row" style="flex-direction: column; align-items: stretch;"><span class="result-label" style="max-width: 100%; margin-bottom: 8px;">Подарки:</span>`;
+                    value.forEach(g => {
+                        mainHtml += `<div style="display:flex; justify-content:space-between; background:#f9f9f9; padding:8px; border-radius:8px; margin-bottom:4px;"><span>От: ${g.sender}</span><span>${g.stars} ⭐</span></div>`;
+                    });
+                    mainHtml += `</div>`;
+                } else {
+                    mainHtml += `<div class="result-row"><span class="result-label">${key}</span><span class="result-value">${value}</span></div>`;
+                }
+            }
+            document.getElementById('main-data').innerHTML = mainHtml;
+            
+            let extraHtml = '';
+            if (data.senders) {
+                extraHtml += `<div class="card"><div class="section-title">Отправители</div>`;
+                data.senders.forEach(tx => {
+                    extraHtml += `<div class="tx-item"><div class="tx-row-top"><span class="tx-addr">${tx.addr.substring(0,6)}...</span><span class="tx-amount in">+${tx.amount} TON</span></div></div>`;
+                });
+                extraHtml += `</div>`;
+            }
+            document.getElementById('extra-data').innerHTML = extraHtml;
+        }
+
+        function goBack() {
+            document.getElementById('result-screen').style.display = 'none';
+            document.getElementById('search-screen').querySelector('input').style.display = 'block';
+            document.getElementById('search-btn').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
