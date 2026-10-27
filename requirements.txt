@@ -1,8 +1,0 @@
-kurigram
-TgCrypto-pyrofork
-fastapi
-uvicorn[standard]
-pydantic
-aiohttp
-phonenumbers
-tonsdk
