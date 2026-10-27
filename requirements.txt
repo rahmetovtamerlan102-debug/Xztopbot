@@ -1,0 +1,7 @@
+kurigram
+fastapi
+uvicorn
+pydantic
+aiohttp
+phonenumbers
+tonsdk
